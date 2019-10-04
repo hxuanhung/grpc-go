@@ -20,6 +20,34 @@ option java_outer_classname = "RouteGuideProto";
 
 package routeguide;
 
+import "google/api/annotations.proto";
+import "protoc-gen-swagger/options/annotations.proto";
+
+option (grpc.gateway.protoc_gen_swagger.options.openapiv2_swagger) = {
+	info: {
+		title: "Route guide";
+		version: "1.0";
+		contact: {
+			name: "Route guide project";
+			url: "https://github.com/hxuanhung/grpc-go";
+        };
+    };
+    schemes: HTTP;
+    consumes: "application/json";
+    produces: "application/json";
+    responses: {
+		key: "404";
+		value: {
+			description: "Returned when the resource does not exist.";
+			schema: {
+				json_schema: {
+					type: STRING;
+				}
+			}
+		}
+	}
+};
+
 // Interface exported by the server.
 service RouteGuide {
   // A simple RPC.
@@ -28,7 +56,11 @@ service RouteGuide {
   //
   // A feature with an empty name is returned if there's no feature at the given
   // position.
-  rpc GetFeature(Point) returns (Feature) {}
+  rpc GetFeature(Point) returns (Feature) {
+    option (google.api.http) = {
+      get: "/v1/feature" 
+    };
+  }
 
   // A server-to-client streaming RPC.
   //
@@ -36,7 +68,11 @@ service RouteGuide {
   // streamed rather than returned at once (e.g. in a response message with a
   // repeated field), as the rectangle may cover a large area and contain a
   // huge number of features.
-  rpc ListFeatures(Rectangle) returns (stream Feature) {}
+  rpc ListFeatures(Rectangle) returns (stream Feature) {
+    option (google.api.http) = {
+      get: "/v1/feature/list" 
+    };
+  }
 
   // A client-to-server streaming RPC.
   //
