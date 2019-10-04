@@ -31,12 +31,12 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"math"
 	"net"
 	"sync"
 	"time"
 
+	"go.uber.org/zap"
 	"google.golang.org/grpc"
 
 	"google.golang.org/grpc/credentials"
@@ -49,16 +49,19 @@ import (
 
 	"net/http"
 
+	"google.golang.org/grpc/examples/route_guide/logger"
 	pb "google.golang.org/grpc/examples/route_guide/routeguide"
 )
 
 var (
-	tls        = flag.Bool("tls", false, "Connection uses TLS if true, else plain TCP")
-	certFile   = flag.String("cert_file", "", "The TLS cert file")
-	keyFile    = flag.String("key_file", "", "The TLS key file")
-	jsonDBFile = flag.String("json_db_file", "", "A json file containing a list of features")
-	port       = flag.String("port", "localhost:10000", "The gRPC server port")
-	httpPort   = flag.String("httpPort", "8081", "The rest server port")
+	tls           = flag.Bool("tls", false, "Connection uses TLS if true, else plain TCP")
+	certFile      = flag.String("cert_file", "", "The TLS cert file")
+	keyFile       = flag.String("key_file", "", "The TLS key file")
+	jsonDBFile    = flag.String("json_db_file", "", "A json file containing a list of features")
+	port          = flag.String("port", "localhost:10000", "The gRPC server port")
+	httpPort      = flag.String("httpPort", "8081", "The rest server port")
+	logLevel      = flag.Int("logLevel", -1, "Global log level")
+	logTimeFormat = flag.String("logTimeFormat", "2006-01-02T15:04:05.999999999Z07:00", "Print time format for logger e.g. 2006-01-02T15:04:05Z07:00")
 )
 
 type routeGuideServer struct {
@@ -164,13 +167,13 @@ func (s *routeGuideServer) loadFeatures(filePath string) {
 		var err error
 		data, err = ioutil.ReadFile(filePath)
 		if err != nil {
-			log.Fatalf("Failed to load default features: %v", err)
+			logger.Log.Fatal("Failed to load default features", zap.String("reason", err.Error()))
 		}
 	} else {
 		data = exampleData
 	}
 	if err := json.Unmarshal(data, &s.savedFeatures); err != nil {
-		log.Fatalf("Failed to load default features: %v", err)
+		logger.Log.Fatal("Failed to load default features: %v", zap.String("reason", err.Error()))
 	}
 }
 
@@ -234,14 +237,14 @@ func startRESTServer() error {
 	opts := []grpc.DialOption{grpc.WithInsecure()}
 
 	if err := pb.RegisterRouteGuideHandlerFromEndpoint(ctx, mux, *port, opts); err != nil {
-		log.Fatalf("failed to start HTTP gateway: %v", err)
+		logger.Log.Fatal("failed to start HTTP gateway", zap.String("reason", err.Error()))
 	}
 	srv := &http.Server{
 		Addr:    ":" + *httpPort, // ":" is required
 		Handler: mux,
 	}
 
-	log.Println("starting HTTP/REST gateway...")
+	logger.Log.Info("starting HTTP/REST gateway...")
 	return srv.ListenAndServe()
 }
 
@@ -249,7 +252,7 @@ func startGRPCServer() {
 	flag.Parse()
 	lis, err := net.Listen("tcp", fmt.Sprintf("localhost:%d", 10000))
 	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
+		logger.Log.Fatal("failed to listen", zap.String("reason", err.Error()))
 	}
 	var opts []grpc.ServerOption
 	if *tls {
@@ -261,18 +264,24 @@ func startGRPCServer() {
 		}
 		creds, err := credentials.NewServerTLSFromFile(*certFile, *keyFile)
 		if err != nil {
-			log.Fatalf("Failed to generate credentials %v", err)
+			logger.Log.Fatal("Failed to generate credentials", zap.String("reason", err.Error()))
 		}
 		opts = []grpc.ServerOption{grpc.Creds(creds)}
 	}
 	grpcServer := grpc.NewServer(opts...)
 	pb.RegisterRouteGuideServer(grpcServer, newServer())
 
-	log.Println("starting gRPC server...")
+	logger.Log.Info("starting gRPC server...")
 	grpcServer.Serve(lis)
 }
 
 func main() {
+	// initialize logger
+	if err := logger.Init(*logLevel, *logTimeFormat); err != nil {
+		fmt.Errorf("failed to initialize logger: %v", err)
+		return
+	}
+
 	flag.Parse()
 	defer glog.Flush()
 
