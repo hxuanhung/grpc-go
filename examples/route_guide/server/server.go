@@ -50,6 +50,7 @@ import (
 	"net/http"
 
 	"google.golang.org/grpc/examples/route_guide/logger"
+	middleware_grpc "google.golang.org/grpc/examples/route_guide/middleware/grpc"
 	pb "google.golang.org/grpc/examples/route_guide/routeguide"
 )
 
@@ -268,6 +269,10 @@ func startGRPCServer() {
 		}
 		opts = []grpc.ServerOption{grpc.Creds(creds)}
 	}
+
+	// add middleware
+	opts = middleware_grpc.AddLogging(logger.Log, opts)
+
 	grpcServer := grpc.NewServer(opts...)
 	pb.RegisterRouteGuideServer(grpcServer, newServer())
 

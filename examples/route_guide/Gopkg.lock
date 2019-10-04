@@ -37,6 +37,21 @@
   version = "v1.3.2"
 
 [[projects]]
+  digest = "1:665e50391b2ba46481d1124efe73f46816d6f902453be1bbba87afee5201e6af"
+  name = "github.com/grpc-ecosystem/go-grpc-middleware"
+  packages = [
+    ".",
+    "logging",
+    "logging/zap",
+    "logging/zap/ctxzap",
+    "tags",
+    "tags/zap",
+  ]
+  pruneopts = "UT"
+  revision = "dd15ed025b6054e5253963e355991f3070d4e593"
+  version = "v1.1.0"
+
+[[projects]]
   digest = "1:eb9de289c8c6ff3bc3c07a0cb36506b20dc7295cc2a5d72d98d4b96ea0e1be18"
   name = "github.com/grpc-ecosystem/grpc-gateway"
   packages = [
@@ -193,6 +208,9 @@
     "github.com/golang/mock/gomock",
     "github.com/golang/protobuf/descriptor",
     "github.com/golang/protobuf/proto",
+    "github.com/grpc-ecosystem/go-grpc-middleware",
+    "github.com/grpc-ecosystem/go-grpc-middleware/logging/zap",
+    "github.com/grpc-ecosystem/go-grpc-middleware/tags",
     "github.com/grpc-ecosystem/grpc-gateway/protoc-gen-swagger/options",
     "github.com/grpc-ecosystem/grpc-gateway/runtime",
     "github.com/grpc-ecosystem/grpc-gateway/utilities",
