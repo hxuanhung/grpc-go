@@ -51,6 +51,7 @@ import (
 
 	"google.golang.org/grpc/examples/route_guide/logger"
 	middleware_grpc "google.golang.org/grpc/examples/route_guide/middleware/grpc"
+	middleware_rest "google.golang.org/grpc/examples/route_guide/middleware/rest"
 	pb "google.golang.org/grpc/examples/route_guide/routeguide"
 )
 
@@ -241,8 +242,10 @@ func startRESTServer() error {
 		logger.Log.Fatal("failed to start HTTP gateway", zap.String("reason", err.Error()))
 	}
 	srv := &http.Server{
-		Addr:    ":" + *httpPort, // ":" is required
-		Handler: mux,
+		Addr: ":" + *httpPort, // ":" is required
+		// add handler with middleware
+		Handler: middleware_rest.AddRequestID(
+			middleware_rest.AddLogger(logger.Log, mux)),
 	}
 
 	logger.Log.Info("starting HTTP/REST gateway...")
