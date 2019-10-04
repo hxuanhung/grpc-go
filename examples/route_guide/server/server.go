@@ -42,7 +42,12 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/testdata"
 
+	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
+
+	"github.com/grpc-ecosystem/grpc-gateway/runtime"
+
+	"net/http"
 
 	pb "google.golang.org/grpc/examples/route_guide/routeguide"
 )
@@ -52,7 +57,8 @@ var (
 	certFile   = flag.String("cert_file", "", "The TLS cert file")
 	keyFile    = flag.String("key_file", "", "The TLS key file")
 	jsonDBFile = flag.String("json_db_file", "", "A json file containing a list of features")
-	port       = flag.Int("port", 10000, "The server port")
+	port       = flag.String("port", "localhost:10000", "The gRPC server port")
+	httpPort   = flag.String("httpPort", "8081", "The rest server port")
 )
 
 type routeGuideServer struct {
@@ -218,9 +224,30 @@ func newServer() *routeGuideServer {
 	return s
 }
 
-func main() {
+func startRESTServer() error {
+	ctx := context.Background()
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	mux := runtime.NewServeMux()
+
+	opts := []grpc.DialOption{grpc.WithInsecure()}
+
+	if err := pb.RegisterRouteGuideHandlerFromEndpoint(ctx, mux, *port, opts); err != nil {
+		log.Fatalf("failed to start HTTP gateway: %v", err)
+	}
+	srv := &http.Server{
+		Addr:    ":" + *httpPort, // ":" is required
+		Handler: mux,
+	}
+
+	log.Println("starting HTTP/REST gateway...")
+	return srv.ListenAndServe()
+}
+
+func startGRPCServer() {
 	flag.Parse()
-	lis, err := net.Listen("tcp", fmt.Sprintf("localhost:%d", *port))
+	lis, err := net.Listen("tcp", fmt.Sprintf("localhost:%d", 10000))
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
@@ -240,7 +267,23 @@ func main() {
 	}
 	grpcServer := grpc.NewServer(opts...)
 	pb.RegisterRouteGuideServer(grpcServer, newServer())
+
+	log.Println("starting gRPC server...")
 	grpcServer.Serve(lis)
+}
+
+func main() {
+	flag.Parse()
+	defer glog.Flush()
+
+	// Goroutines: A goroutine is a lightweight thread managed by the Go runtime.
+	go func() {
+		startGRPCServer()
+	}()
+
+	if err := startRESTServer(); err != nil {
+		glog.Fatal(err)
+	}
 }
 
 // exampleData is a copy of testdata/route_guide_db.json. It's to avoid
